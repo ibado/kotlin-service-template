@@ -18,10 +18,14 @@ import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+private val HOST = System.getenv("SERVER_HOST")
+private val PORT = System.getenv("SERVER_PORT").toInt()
+private val DB_URL = System.getenv("DATABASE_URL")
+
 fun main() {
-    val connectionPool = createConnectionPool()
+    val connectionPool = PostgreSQLConnectionBuilder.createConnectionPool(DB_URL)
     val getUsers = resolveGetUsers(connectionPool)
-    embeddedServer(CIO, port = 8080, host = "0.0.0.0") { module(getUsers) }
+    embeddedServer(CIO, port = PORT, host = HOST) { module(getUsers) }
         .withGracefulShutdown(connectionPool)
         .start(true)
 }
@@ -56,11 +60,6 @@ private fun resolveGetUsers(
 
 private suspend fun ConnectionPool<*>.acquire(): SuspendingConnection =
     connect().await().asSuspending
-
-private fun createConnectionPool(): ConnectionPool<PostgreSQLConnection> {
-    val connectionURL = System.getenv("DATABASE_URL")
-    return PostgreSQLConnectionBuilder.createConnectionPool(connectionURL)
-}
 
 private fun ApplicationEngine.withGracefulShutdown(
     connectionPool: ConnectionPool<PostgreSQLConnection>
